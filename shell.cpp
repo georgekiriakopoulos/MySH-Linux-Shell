@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "shell.hpp"
 
+std::vector<Alias *> aliasesVector; 
+
 
 vector<string> normalizeInput(string inputString) {                   //function to create a vector out of each word that was typed as a command by the user 
     vector<string> inputVector; 
@@ -27,7 +29,7 @@ vector<string> normalizeInput(string inputString) {                   //function
 void traverseCommand(vector<string> inputVector) {
     bool hasPipedCommand = false; 
     bool hasBackgroundCommand = false; 
-    for (int i = 0; i < inputVector.size(); i++) {   
+    for (int i = 0; i < inputVector.size(); i++) { 
         if (inputVector[i] == "<") {                                    //redirect input
             string inputFileStr = inputVector[i+1]; 
             redirectInput(inputFileStr); 
@@ -57,27 +59,7 @@ void traverseCommand(vector<string> inputVector) {
     }
   }
 
-// char *StringToCharArray(string commandArgs, int &size) {
-//     istringstream ss(commandArgs);                  //splitting inputString around the spaces
-//     string word; 
-//     int total_words = 0;
-//     for (int i = 0; i < commandArgs.size(); i++) {
-//         if (commandArgs[i] == ' ') {                    //if we encounter a space in the command given then it means we have a new word
-//             total_words++;
-//         }
-//     }
-  
-//     char *inputArgs[total_words + 1]; 
-//     int j = 0;
-//     while (ss >> word) {
-//         inputArgs[j] = strdup(word.c_str());
-//         j++; 
-//     }
 
-//     inputArgs[total_words] = NULL;    
-//     size = total_words + 1; 
-//     return inputArgs[total_words+1];
-// }
 
 void executeCommand(string commandArgs, bool background_process) {
     string word; 
@@ -85,9 +67,13 @@ void executeCommand(string commandArgs, bool background_process) {
     glob_t gstruct; 
     string terminal = "/dev/tty";
 
-    int total_words = countWordsInCommand(commandArgs); 
+    bool createOrDestroyAlias = handleAliases(commandArgs);   //if handleAliases() returns true that means we created/destroyed an alias so there's no need to fork() and call exec, so just exit
+    if (createOrDestroyAlias){  
+        return; 
+    }
+    int total_words = countWordsInCommand(commandArgs);  
 
-    istringstream ss(commandArgs);                  //splitting inputString around the spaces
+    istringstream ss(commandArgs);                  //splitting input string around the spaces
 
     char *inputArgs[total_words + 1]; 
     int j = 0;
@@ -98,17 +84,16 @@ void executeCommand(string commandArgs, bool background_process) {
             for (int i = 0; i < gstruct.gl_pathc; i++) {            //passing the wildcard's pathname to my input arguments array so execvp() can recognize it
                 inputArgs[j] = gstruct.gl_pathv[i];
             }
-
-        } else {
+        } 
+        else {
             inputArgs[j] = strdup(word.c_str());
         }
         j++; 
     }
 
-    inputArgs[total_words] = NULL;              
+ 
+    inputArgs[total_words] = NULL;     
     const char *command = inputArgs[0];
-    //char *inputArgTest = StringToCharArray(commandArgs, size); 
-
 
     pid_t pid = fork();
     if (pid == -1) {
@@ -118,7 +103,7 @@ void executeCommand(string commandArgs, bool background_process) {
         //child process so exec
         int status_code = execvp(command, inputArgs);
         if (status_code == -1) {
-            perror("Exec on child did not work!");    
+            perror("Exec on child did not work!");    /////////DELETE THIS ERROR MESSAGE
         }
         exit(1);
     } else {
@@ -224,3 +209,95 @@ int countWordsInCommand(string commandArgs) {           //counting the words in 
     }
     return total_words;
 }
+
+bool handleAliases(string & commandArgs) {
+    string word; 
+    string tempCommandArgs = commandArgs;
+    istringstream ss(commandArgs);
+    string finalArgs; 
+    std::vector<string> commands;
+
+    while (ss >> word) {
+        if (word == "createalias") {
+            createAlias(tempCommandArgs);
+            return true;
+        }
+        if (word == "destroyalias") {
+            destroyAlias(tempCommandArgs);            
+            return true;    
+        }
+        commands.push_back(word);
+    }
+
+    for (int i = 0; i < commands.size(); i++) {
+        for (int j = 0; j < aliasesVector.size(); j++) {
+            if (commands[i] == aliasesVector[j]->aliasedCommand) {          //if the user typed in an aliased command then replace that with the original command sto the exec function can recognize it
+                commands[i] = aliasesVector[j]->originalCommand; 
+            }
+        } 
+    }
+
+    for (int i = 0; i < commands.size(); i++) {
+        finalArgs += commands[i];
+        finalArgs += " ";
+    }
+
+
+    commandArgs = finalArgs;
+    cout << "final args: " << finalArgs << endl; 
+
+    return false; 
+}
+
+void createAlias(string commandArgs) {
+    istringstream ss(commandArgs);
+    string word; 
+    string finalArgs; 
+    std::vector<string> commands;
+
+    while(ss >> word) {
+        commands.push_back(word);
+    }
+
+    string aliasedCommand = commands[1];
+    string originalCommand;
+    for (int i = 2; i < commands.size(); i++) {
+        commands[i].erase(remove(commands[i].begin(), commands[i].end(), '"'), commands[i].end());              //remove double quotes from string so we can convert it to char * 
+        originalCommand += commands[i];
+        originalCommand += " ";
+    }
+
+    Alias* alias = new Alias(originalCommand, aliasedCommand);
+    aliasesVector.push_back(alias);
+}
+
+
+void destroyAlias(string commandArgs) {
+    istringstream ss(commandArgs);
+    string word; 
+    std::vector<string> commands;
+    while (ss >> word) {
+        commands.push_back(word);
+    }
+
+    for (int i = 0; i < aliasesVector.size(); i++) {
+        if (commands[1] == aliasesVector[i]->aliasedCommand) {
+            aliasesVector.erase(aliasesVector.begin() + i);
+            break;
+        }
+    }
+}
+
+// void printAliases() {
+//     cout << "printing aliases " << endl; 
+//     for (int i = 0; i < aliasesVector.size(); i++) {
+//         cout << aliasesVector[i]->aliasedCommand << ", " << aliasesVector[i]->originalCommand << endl;
+//     }
+// }
+
+// void printInputArguments(char * inputArgs[], int size) {
+//     cout << "printing input args" << endl; 
+//     for (int i = 0; i < size; i++) {
+//         cout << inputArgs[i] << endl;
+//     }
+// }
