@@ -12,12 +12,14 @@
 
 using namespace std;
 
+
 //NOTES
 //you have to implement cd command by yourself.
-
+//also delete the perror in execvp()
 
 int main() {
 
+  MyHistory * myhistory = new MyHistory(); 
 
   while (1) {
     printf("in-mysh-now:>");
@@ -29,10 +31,26 @@ int main() {
         break; 
     }
 
-    string inputString = inputBuffer;
+    string comm;
+    if (strcmp("myHistory", inputBuffer) == 0) {      //theleis mono 20
+      myhistory->printMyHistory();
+    } else if (strncmp(inputBuffer, "myHistory", 9) == 0 ) {
+      char charIndex = inputBuffer[10];               
+      int intIndex = (int)charIndex - 48;               //converting the index that the user typed in for the myHistory vector to an integer, i do -48 because in ASCII numbers start from 48
+      comm = myhistory->getMyHistoryElement(intIndex);
+      strcpy(inputBuffer, comm.c_str());
+    }
+
+
+    
+    string command = inputBuffer;
+    myhistory->addToMyHistory(command);     
+
     vector<string> inputVector = normalizeInput(inputBuffer);
 
     traverseCommand(inputVector);
+
+    strcpy(inputBuffer, "");        //emptying inputBuffer so the next command can be executed
   }
-  
+  delete myhistory;
 }

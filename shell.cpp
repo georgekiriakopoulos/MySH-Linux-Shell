@@ -3,6 +3,8 @@
 #include "shell.hpp"
 
 std::vector<Alias *> aliasesVector; 
+pid_t stoppedProcessPid;
+
 
 
 vector<string> normalizeInput(string inputString) {                   //function to create a vector out of each word that was typed as a command by the user 
@@ -72,6 +74,7 @@ void executeCommand(string commandArgs, bool background_process) {
         return; 
     }
     int total_words = countWordsInCommand(commandArgs);  
+    
 
     istringstream ss(commandArgs);                  //splitting input string around the spaces
 
@@ -90,7 +93,6 @@ void executeCommand(string commandArgs, bool background_process) {
         }
         j++; 
     }
-
  
     inputArgs[total_words] = NULL;     
     const char *command = inputArgs[0];
@@ -109,6 +111,8 @@ void executeCommand(string commandArgs, bool background_process) {
     } else {
         //parent process so wait 
         if (background_process == false) {
+            signal(SIGINT, handleSigint);
+            signal(SIGTSTP, handleSigtstp);
             int status; 
             waitpid(pid, &status, 0);
             redirectInput("/dev/tty");              //when child process is done, redirect input and output back to the terminal 
@@ -242,10 +246,7 @@ bool handleAliases(string & commandArgs) {
         finalArgs += " ";
     }
 
-
     commandArgs = finalArgs;
-    cout << "final args: " << finalArgs << endl; 
-
     return false; 
 }
 
@@ -288,16 +289,25 @@ void destroyAlias(string commandArgs) {
     }
 }
 
-// void printAliases() {
-//     cout << "printing aliases " << endl; 
-//     for (int i = 0; i < aliasesVector.size(); i++) {
-//         cout << aliasesVector[i]->aliasedCommand << ", " << aliasesVector[i]->originalCommand << endl;
-//     }
-// }
+void handleSigint(int sig)
+{
+    cout << "Caught a SIGINT signal!" << endl; 
+}
 
-// void printInputArguments(char * inputArgs[], int size) {
-//     cout << "printing input args" << endl; 
-//     for (int i = 0; i < size; i++) {
-//         cout << inputArgs[i] << endl;
-//     }
-// }
+void handleSigtstp(int sig)
+{
+    cout << "Caught a SIGSTOP signal!" << endl; 
+}
+
+void printAliases() {
+    for (int i = 0; i < aliasesVector.size(); i++) {
+        cout << aliasesVector[i]->aliasedCommand << ", " << aliasesVector[i]->originalCommand << endl;
+    }
+}
+
+void printInputArguments(char * inputArgs[], int size) {
+    for (int i = 0; i < size; i++) {
+        cout << inputArgs[i] << endl;
+    }
+}
+
