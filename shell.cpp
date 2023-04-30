@@ -95,6 +95,10 @@ void executeCommand(string commandArgs, bool background_process) {
     }
  
     inputArgs[total_words] = NULL;     
+    if (strcmp(inputArgs[0], "cd") == 0 ){
+        changeDirectory(inputArgs[1]);
+        return;
+    }
     const char *command = inputArgs[0];
 
     pid_t pid = fork();
@@ -104,9 +108,6 @@ void executeCommand(string commandArgs, bool background_process) {
     }else if (pid == 0) {
         //child process so exec
         int status_code = execvp(command, inputArgs);
-        if (status_code == -1) {
-            perror("Exec on child did not work!");    /////////DELETE THIS ERROR MESSAGE
-        }
         exit(1);
     } else {
         //parent process so wait 
@@ -142,6 +143,7 @@ int redirectInput(string inputFileStr) {
         perror("error at dup2 input");
     }
     close(input_fd); 
+    delete[] char_array;
     return input_fd;
 }
 
@@ -187,6 +189,7 @@ int appendOutput(string appendFileStr) {
         perror("error at dup2 output");
     }
     close(output_fd); 
+    delete[] char_array;
     return output_fd;
 }
 
@@ -309,5 +312,12 @@ void printInputArguments(char * inputArgs[], int size) {
     for (int i = 0; i < size; i++) {
         cout << inputArgs[i] << endl;
     }
+}
+
+void changeDirectory(string cdCommand) {
+    istringstream ss(cdCommand);                 
+    string word;
+    while (ss >> word) {}
+    chdir(word.c_str());
 }
 

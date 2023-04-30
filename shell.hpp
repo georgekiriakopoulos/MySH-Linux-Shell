@@ -20,7 +20,6 @@
 
 #define READ 0 
 #define WRITE 1 
-//bool background_process; 
 
 using namespace std; 
 
@@ -69,7 +68,6 @@ extern std::vector<Alias *> aliasesVector;
 extern pid_t stoppedProcessPid;
 
 
-
 std::vector<std::string> normalizeInput( std::string );
 int redirectInput(std::string);
 int redirectOutput(std::string);  
@@ -85,9 +83,5 @@ void handleSigint(int);
 void handleSigtstp(int);
 void printAliases();
 void printInputArguments(char *[], int);
-// void printMyHistory();
+void changeDirectory(std::string);
 
-//void addToMyHistory(char *, int ) ;
-
-//void printMyHistory();
-//char **stringToCharCommand(std::string, int &); 

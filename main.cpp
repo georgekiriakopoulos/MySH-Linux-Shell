@@ -2,20 +2,11 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#define PERMS 0644
 #include <string.h>
 #include <sys/wait.h>
 #include "shell.hpp"
 
 using namespace std;
-
-
-//NOTES
-//you have to implement cd command by yourself.
-//also delete the perror in execvp()
 
 int main() {
 
@@ -32,7 +23,7 @@ int main() {
     }
 
     string comm;
-    if (strcmp("myHistory", inputBuffer) == 0) {      //theleis mono 20
+    if (strcmp("myHistory", inputBuffer) == 0) {      
       myhistory->printMyHistory();
     } else if (strncmp(inputBuffer, "myHistory", 9) == 0 ) {
       char charIndex = inputBuffer[10];               
@@ -41,13 +32,17 @@ int main() {
       strcpy(inputBuffer, comm.c_str());
     }
 
+    if (strncmp(inputBuffer, "cd", 2) == 0) {
+      string cdCommand = inputBuffer;
+      changeDirectory(cdCommand);
+    }
+
 
     
     string command = inputBuffer;
     myhistory->addToMyHistory(command);     
 
     vector<string> inputVector = normalizeInput(inputBuffer);
-
     traverseCommand(inputVector);
 
     strcpy(inputBuffer, "");        //emptying inputBuffer so the next command can be executed
