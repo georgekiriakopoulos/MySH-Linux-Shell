@@ -22,6 +22,3 @@
 3. Run the shell:
   ```bash
   ./mysh
-
-   
-  
